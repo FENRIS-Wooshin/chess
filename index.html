@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>매칭형 2인용 체스 - Ultimate</title>
     <style>
-        /* --- 고급 CSS 기술: 기본 초기화 및 폰트 --- */
+        /* --- 기본 초기화 및 폰트 --- */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Pretendard', -apple-system, sans-serif; }
 
-        /* --- 화려한 애니메이션 배경 (고급기술) --- */
+        /* --- 화려한 애니메이션 배경 --- */
         body {
             background: linear-gradient(-45deg, #0f0c29, #302b63, #24243e, #141e30);
             background-size: 400% 400%;
@@ -27,11 +27,11 @@
             100% { background-position: 0% 50%; }
         }
 
-        /* 매칭 화면 UI */
+        /* --- 매칭 화면 UI --- */
         #match-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(15, 12, 41, 0.8);
-            backdrop-filter: blur(10px); /* 글래스모피즘 효과 */
+            backdrop-filter: blur(10px);
             display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100;
         }
 
@@ -44,22 +44,17 @@
         }
         .play-btn:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 8px 25px rgba(118, 75, 162, 0.6); }
 
-        /* --- 메인 게임 레이아웃 (보드 + 우측 패널) --- */
+        /* --- 메인 게임 레이아웃 --- */
         #game-layout {
-            display: none;
-            flex-direction: row;
-            gap: 30px;
-            max-width: 1000px;
-            width: 100%;
-            padding: 20px;
-            align-items: flex-start;
-            justify-content: center;
-            flex-wrap: wrap;
+            display: none; flex-direction: row; gap: 30px;
+            max-width: 1000px; width: 100%; padding: 20px;
+            align-items: flex-start; justify-content: center; flex-wrap: wrap;
         }
 
-        /* 체스 보드 영역 */
+        /* --- 체스 보드 영역 --- */
         .board-container {
             display: flex; flex-direction: column; align-items: center;
+            perspective: 1000px; /* 3D 회전 효과를 위한 원근감 */
         }
 
         .board {
@@ -71,11 +66,15 @@
             overflow: hidden;
             box-shadow: 0 15px 35px rgba(0,0,0,0.6), 0 0 20px rgba(102, 126, 234, 0.3);
             background-color: #2a2a35;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); /* 부드러운 회전 애니메이션 */
         }
 
         @media (min-width: 768px) {
             .board { grid-template-columns: repeat(8, 65px); grid-template-rows: repeat(8, 65px); }
         }
+
+        /* 흑 차례일 때 보드 회전 */
+        .board.flipped { transform: rotate(180deg); box-shadow: 0 -15px 35px rgba(0,0,0,0.6), 0 0 20px rgba(102, 126, 234, 0.3); }
 
         .cell {
             width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
@@ -83,14 +82,11 @@
             transition: background-color 0.2s;
         }
 
-        /* 보드 타일 색상 */
         .cell.light { background-color: rgba(240, 240, 245, 0.9); }
-        .cell.dark { background-color: rgba(118, 150, 86, 0.9); /* 클래식한 체스 그린 */ }
-
+        .cell.dark { background-color: rgba(118, 150, 86, 0.9); }
         .cell.last-move { background-color: rgba(255, 255, 51, 0.5) !important; }
         .cell.selected { background-color: rgba(255, 255, 51, 0.8) !important; }
 
-        /* 이동 가능 표시 */
         .valid-move::after {
             content: ''; position: absolute; width: 25%; height: 25%;
             background-color: rgba(0, 0, 0, 0.25); border-radius: 50%; pointer-events: none;
@@ -100,56 +96,52 @@
             border: 5px solid rgba(0, 0, 0, 0.25); box-sizing: border-box;
         }
 
-        /* 체스 기물 디자인 */
+        /* 기물 디자인 및 회전 역보정 (글자는 항상 정방향 유지) */
+        .piece { display: inline-block; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+        .board.flipped .piece { transform: rotate(-180deg); }
         .piece.white { color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
         .piece.black { color: #000000; text-shadow: 0 1px 2px rgba(255,255,255,0.5); }
         .piece-pop { animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        
         @keyframes pop { 0% { transform: scale(0.5); } 100% { transform: scale(1); } }
+        /* 뒤집힌 상태에서의 pop 애니메이션 보정 */
+        .board.flipped .piece-pop { animation: popFlipped 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes popFlipped { 0% { transform: scale(0.5) rotate(-180deg); } 100% { transform: scale(1) rotate(-180deg); } }
 
-        /* 타격감 이펙트 */
         .capture-effect { animation: hitShake 0.3s ease-in-out; background-color: rgba(255, 50, 50, 0.8) !important; }
-        @keyframes hitShake {
-            0% { transform: scale(1); }
-            25% { transform: scale(1.1) rotate(-3deg); }
-            50% { transform: scale(1.1) rotate(3deg); }
-            75% { transform: scale(1.1) rotate(-3deg); }
-            100% { transform: scale(1); }
-        }
+        @keyframes hitShake { 0%, 100% { transform: translateX(0); } 25%, 75% { transform: translateX(-3px); } 50% { transform: translateX(3px); } }
 
-        /* --- 우측 상태 및 킬로그 패널 (글래스모피즘) --- */
+        /* --- 우측 상태 및 킬로그 패널 --- */
         .side-panel {
-            width: 250px;
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            width: 280px; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 20px;
+            display: flex; flex-direction: column; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         }
 
-        .status-box {
-            text-align: center; margin-bottom: 20px; padding-bottom: 15px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .turn-text { font-size: 22px; font-weight: 800; text-shadow: 0 0 10px rgba(255,255,255,0.3); transition: color 0.3s; }
+        .status-box { text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+        .turn-text { font-size: 24px; font-weight: 800; text-shadow: 0 0 10px rgba(255,255,255,0.3); transition: color 0.3s; }
         
         .log-section { margin-bottom: 15px; }
         .log-title { font-size: 14px; color: #a5b4fc; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;}
-        
-        /* 킬로그 (잡은 기물) */
-        .graveyard {
-            display: flex; flex-wrap: wrap; gap: 4px; font-size: 24px;
-            min-height: 40px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px;
-        }
+        .graveyard { display: flex; flex-wrap: wrap; gap: 4px; font-size: 24px; min-height: 44px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px; }
 
-        /* 체크/체크메이트 알림 */
-        .alert-message {
-            color: #ff4757; font-weight: bold; font-size: 18px; text-align: center;
-            margin-top: 10px; min-height: 24px; animation: pulse 1s infinite;
+        .alert-message { color: #ff4757; font-weight: bold; font-size: 18px; text-align: center; margin-top: 10px; min-height: 24px; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        /* --- 프로모션 UI 모달 --- */
+        #promotion-modal {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7); z-index: 50; flex-direction: column; align-items: center; justify-content: center;
         }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .promotion-box {
+            background: #2a2a35; padding: 20px; border-radius: 12px; border: 2px solid #a5b4fc;
+            display: flex; gap: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+        .promo-btn {
+            font-size: 40px; cursor: pointer; padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.1);
+            border: 1px solid transparent; transition: all 0.2s;
+        }
+        .promo-btn:hover { background: rgba(255,255,255,0.3); border-color: #a5b4fc; transform: scale(1.1); }
 
     </style>
 </head>
@@ -184,8 +176,14 @@
         </div>
     </div>
 
+    <div id="promotion-modal">
+        <h2 style="margin-bottom: 20px; color: white;">승급할 기물을 선택하세요</h2>
+        <div class="promotion-box" id="promotion-options">
+            </div>
+    </div>
+
     <script>
-        // --- 1. 매칭 시스템 UI ---
+        // --- 매칭 시스템 ---
         function startMatching() {
             document.getElementById('play-btn').style.display = 'none';
             const status = document.getElementById('match-status');
@@ -200,19 +198,20 @@
             }, 1500);
         }
 
-        // --- 2. 체스 풀 룰셋 엔진 ---
+        // --- 체스 엔진 변수 ---
         const symbols = { 'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙', 'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟' };
         
         let board = [];
         let currentTurn = 'white';
+        let isGameOver = false; // 게임 오버 상태 변수 추가
         let selectedCell = null;
         let validMoves = [];
-        let lastMove = null; // 앙파상 및 하이라이트용: {from: {r,c}, to: {r,c}, piece: obj}
+        let lastMove = null;
         let capturedByWhite = [];
         let capturedByBlack = [];
         let effectCell = null;
+        let pendingPromotion = null; // 프로모션 대기 상태
 
-        // 초기 기물 배치 (객체로 관리하여 움직임 여부 파악 - 캐슬링용)
         const initLayout = [
             ['r','n','b','q','k','b','n','r'],
             ['p','p','p','p','p','p','p','p'],
@@ -231,25 +230,24 @@
                 for(let c=0; c<8; c++) {
                     const char = initLayout[r][c];
                     if(char) {
-                        board[r][c] = {
-                            type: char.toLowerCase(),
-                            color: char === char.toUpperCase() ? 'white' : 'black',
-                            char: char,
-                            hasMoved: false
-                        };
+                        board[r][c] = { type: char.toLowerCase(), color: char === char.toUpperCase() ? 'white' : 'black', char: char, hasMoved: false };
                     } else { board[r][c] = null; }
                 }
             }
-            currentTurn = 'white'; selectedCell = null; lastMove = null;
-            capturedByWhite = []; capturedByBlack = []; effectCell = null;
+            currentTurn = 'white'; isGameOver = false; selectedCell = null; lastMove = null;
+            capturedByWhite = []; capturedByBlack = []; effectCell = null; pendingPromotion = null;
             document.getElementById('alert-message').innerText = "";
+            document.getElementById('board').classList.remove('flipped');
             updateUI();
         }
 
-        // --- UI 렌더링 ---
         function updateUI() {
             const boardEl = document.getElementById('board');
             boardEl.innerHTML = '';
+            
+            // 시점 자동 반전 (흑 차례일 때 보드를 돌림)
+            if (currentTurn === 'black') boardEl.classList.add('flipped');
+            else boardEl.classList.remove('flipped');
             
             for (let r = 0; r < 8; r++) {
                 for (let c = 0; c < 8; c++) {
@@ -290,8 +288,9 @@
             statusEl.style.color = currentTurn === 'white' ? '#ffffff' : '#9ca3af';
         }
 
-        // --- 클릭 및 이동 처리 ---
         function handleCellClick(r, c) {
+            if (isGameOver || pendingPromotion) return; // 게임오버 또는 승급 대기중 클릭 방지
+
             const piece = board[r][c];
             const move = validMoves.find(m => m.r === r && m.c === c);
 
@@ -318,13 +317,11 @@
             let targetPiece = board[to.r][to.c];
             let isCapture = false;
 
-            // 1. 앙파상 (En Passant) 처리
             if (to.special === 'en_passant') {
-                targetPiece = board[from.r][to.c]; // 앙파상으로 잡힌 폰
-                board[from.r][to.c] = null; // 보드에서 제거
+                targetPiece = board[from.r][to.c];
+                board[from.r][to.c] = null;
             }
 
-            // 2. 킬 처리
             if (targetPiece) {
                 isCapture = true;
                 effectCell = {r: to.r, c: to.c};
@@ -332,49 +329,71 @@
                 else capturedByBlack.push(targetPiece.char);
             } else { effectCell = null; }
 
-            // 3. 기물 이동
             board[to.r][to.c] = movingPiece;
             board[from.r][from.c] = null;
             movingPiece.hasMoved = true;
 
-            // 4. 캐슬링 (Castling) 처리 (룩도 같이 이동)
             if (to.special === 'castling') {
-                if (to.c === 6) { // 킹사이드
+                if (to.c === 6) { 
                     board[to.r][5] = board[to.r][7]; board[to.r][7] = null; board[to.r][5].hasMoved = true;
-                } else if (to.c === 2) { // 퀸사이드
+                } else if (to.c === 2) { 
                     board[to.r][3] = board[to.r][0]; board[to.r][0] = null; board[to.r][3].hasMoved = true;
                 }
             }
 
-            // 5. 프로모션 (Promotion) - 자동으로 퀸으로 승급
-            if (movingPiece.type === 'p' && (to.r === 0 || to.r === 7)) {
-                movingPiece.type = 'q';
-                movingPiece.char = movingPiece.color === 'white' ? 'Q' : 'q';
-            }
-
             lastMove = { from: {r: from.r, c: from.c}, to: {r: to.r, c: to.c}, piece: movingPiece };
             selectedCell = null; validMoves = [];
-            currentTurn = currentTurn === 'white' ? 'black' : 'white';
 
+            // 프로모션 처리
+            if (movingPiece.type === 'p' && (to.r === 0 || to.r === 7)) {
+                pendingPromotion = { r: to.r, c: to.c, color: movingPiece.color };
+                showPromotionModal(movingPiece.color);
+                return; // 프로모션 선택 전까지 턴을 넘기지 않음
+            }
+
+            finalizeTurn(isCapture);
+        }
+
+        function finalizeTurn(isCapture) {
+            currentTurn = currentTurn === 'white' ? 'black' : 'white';
             checkGameState();
-            
             updateUI();
             if(isCapture) setTimeout(() => { effectCell = null; updateUI(); }, 300);
         }
 
-        // --- 체스 룰 평가 (체크, 체크메이트, 합법적 이동) ---
+        // --- 프로모션 UI 로직 ---
+        function showPromotionModal(color) {
+            const modal = document.getElementById('promotion-modal');
+            const optionsBox = document.getElementById('promotion-options');
+            optionsBox.innerHTML = '';
+            
+            const pieces = [ {type: 'q', char: 'Q'}, {type: 'r', char: 'R'}, {type: 'b', char: 'B'}, {type: 'n', char: 'N'} ];
+            pieces.forEach(p => {
+                const btn = document.createElement('div');
+                btn.className = `promo-btn piece ${color}`;
+                btn.innerText = symbols[color === 'white' ? p.char : p.type];
+                btn.onclick = () => {
+                    const target = board[pendingPromotion.r][pendingPromotion.c];
+                    target.type = p.type;
+                    target.char = color === 'white' ? p.char : p.type;
+                    modal.style.display = 'none';
+                    pendingPromotion = null;
+                    finalizeTurn(false);
+                };
+                optionsBox.appendChild(btn);
+            });
+            modal.style.display = 'flex';
+        }
+
+        // --- 체스 룰 평가 ---
         function getLegalMoves(r, c) {
             const pseudoMoves = getPseudoMoves(board, r, c);
             return pseudoMoves.filter(move => {
-                // 가상으로 움직여보고 내 킹이 체크 당하는지 확인
                 const tempBoard = JSON.parse(JSON.stringify(board));
                 const p = tempBoard[r][c];
-                
                 if(move.special === 'en_passant') tempBoard[r][move.c] = null;
-                
                 tempBoard[move.r][move.c] = p;
                 tempBoard[r][c] = null;
-                
                 return !isKingInCheck(tempBoard, p.color);
             });
         }
@@ -404,7 +423,6 @@
                     if(!p.hasMoved) add(r+dir*2, c, false, true);
                 }
                 add(r+dir, c-1, true); add(r+dir, c+1, true);
-                // 앙파상
                 if(lastMove && lastMove.piece.type === 'p' && Math.abs(lastMove.from.r - lastMove.to.r) === 2) {
                     if(lastMove.to.r === r && Math.abs(lastMove.to.c - c) === 1) {
                         moves.push({r: r+dir, c: lastMove.to.c, capture: true, special: 'en_passant'});
@@ -414,15 +432,22 @@
             else if(p.type === 'n') [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]].forEach(j=>add(r+j[0],c+j[1]));
             else if(p.type === 'k') {
                 [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]].forEach(s=>add(r+s[0],c+s[1]));
-                // 캐슬링
+                // 캐슬링 (수정됨: 킹이 체크가 아닐 때, 통과하는 경로도 공격받지 않아야 함)
                 if(!p.hasMoved && !isKingInCheck(b, p.color)) {
-                    // 킹사이드
+                    // 공격받는 칸인지 확인하는 함수
+                    const isSquareAttacked = (sqR, sqC) => {
+                        let temp = JSON.parse(JSON.stringify(b));
+                        temp[sqR][sqC] = {type: 'k', color: p.color, char: p.char};
+                        return isKingInCheck(temp, p.color);
+                    };
+
                     if(b[r][7] && b[r][7].type==='r' && !b[r][7].hasMoved && !b[r][5] && !b[r][6]) {
-                        moves.push({r, c:6, capture:false, special:'castling'});
+                        if(!isSquareAttacked(r, 5) && !isSquareAttacked(r, 6))
+                            moves.push({r, c:6, capture:false, special:'castling'});
                     }
-                    // 퀸사이드
                     if(b[r][0] && b[r][0].type==='r' && !b[r][0].hasMoved && !b[r][1] && !b[r][2] && !b[r][3]) {
-                        moves.push({r, c:2, capture:false, special:'castling'});
+                        if(!isSquareAttacked(r, 2) && !isSquareAttacked(r, 3))
+                            moves.push({r, c:2, capture:false, special:'castling'});
                     }
                 }
             }
@@ -466,6 +491,7 @@
             if (isKingInCheck(board, currentTurn)) {
                 if (!hasAnyMove) {
                     alertEl.innerText = "CHECKMATE! 게임 종료";
+                    isGameOver = true;
                     setTimeout(() => alert(`${currentTurn === 'white' ? '흑(Black)' : '백(White)'} 승리! (체크메이트)`), 100);
                 } else {
                     alertEl.innerText = "CHECK! (체크)";
@@ -473,7 +499,8 @@
             } else {
                 if (!hasAnyMove) {
                     alertEl.innerText = "STALEMATE! (무승부)";
-                    setTimeout(() => alert("무승부! (스테일메이트 - 더 이상 움직일 수 있는 기물이 없습니다.)"), 100);
+                    isGameOver = true;
+                    setTimeout(() => alert("무승부! (스테일메이트 - 움직일 기물이 없습니다.)"), 100);
                 } else {
                     alertEl.innerText = "";
                 }
